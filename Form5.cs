@@ -6,6 +6,7 @@ namespace electronics
     public partial class Form5 : Form
     {
         private readonly TransactionRepository transactionRepository = new();
+        private readonly AuditLogRepository auditLogRepository = new();
         private readonly BindingList<TransactionReportRow> reportRows = new();
         private readonly DataGridView gridPreview = new();
         private ReportType currentReportType = ReportType.SalesTransaction;
@@ -113,6 +114,9 @@ namespace electronics
                 UpdateTotals();
                 UpdateOverview();
                 lblLastRunValue.Text = DateTime.Now.ToString("MMM dd, yyyy HH:mm", CultureInfo.InvariantCulture);
+                await LogActivityAsync(
+                    "Report Generated",
+                    $"{cmbReportType.Text} report generated for {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}. Rows: {reportRows.Count:N0}.");
             }
             catch (Exception ex)
             {
@@ -151,6 +155,9 @@ namespace electronics
                     currentReportType,
                     reportRows.ToList(),
                     AppSession.CurrentAccount?.FullName ?? "System User");
+                _ = LogActivityAsync(
+                    "Excel Exported",
+                    $"{cmbReportType.Text} report exported to {Path.GetFileName(saveFileDialog.FileName)}. Rows: {reportRows.Count:N0}.");
                 MessageBox.Show("Excel report template exported successfully.", "Report Generator", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
@@ -188,6 +195,18 @@ namespace electronics
 
         private void lvPreview_SelectedIndexChanged(object sender, EventArgs e)
         {
+        }
+
+        private async Task LogActivityAsync(string action, string details)
+        {
+            try
+            {
+                await auditLogRepository.AddAsync(action, details);
+            }
+            catch
+            {
+                // Report generation/export should not fail because of audit logging.
+            }
         }
     }
 }

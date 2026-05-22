@@ -5,6 +5,7 @@ namespace electronics;
 public sealed class AccountManagementForm : Form
 {
     private readonly AccountRepository accountRepository = new();
+    private readonly AuditLogRepository auditLogRepository = new();
     private readonly BindingList<Account> accounts = new();
     private readonly DataGridView grid = new();
     private readonly TextBox txtSearch = new();
@@ -218,6 +219,7 @@ public sealed class AccountManagementForm : Form
                 txtEmail.Text,
                 cmbRole.Text,
                 chkActive.Checked);
+            await LogActivityAsync("Account Added", $"Created account {txtUsername.Text.Trim()} ({cmbRole.Text}). Active: {chkActive.Checked}.");
             ClearForm();
             await LoadAccountsAsync();
         }
@@ -250,6 +252,7 @@ public sealed class AccountManagementForm : Form
                 cmbRole.Text,
                 chkActive.Checked,
                 string.IsNullOrWhiteSpace(txtPassword.Text) ? null : txtPassword.Text);
+            await LogActivityAsync("Account Updated", $"Updated account {txtUsername.Text.Trim()} ({cmbRole.Text}). Active: {chkActive.Checked}.");
             await LoadAccountsAsync();
             PromptLogoutIfCurrentAccountWasInactivated(selectedAccountId.Value, chkActive.Checked);
         }
@@ -270,6 +273,7 @@ public sealed class AccountManagementForm : Form
         try
         {
             await accountRepository.SetActiveAsync(selectedAccountId.Value, isActive);
+            await LogActivityAsync(isActive ? "Account Activated" : "Account Inactivated", $"{txtUsername.Text.Trim()} was set to {(isActive ? "active" : "inactive")}.");
             await LoadAccountsAsync();
             PromptLogoutIfCurrentAccountWasInactivated(selectedAccountId.Value, isActive);
         }
@@ -345,5 +349,17 @@ public sealed class AccountManagementForm : Form
         cmbRole.SelectedIndex = 1;
         chkActive.Checked = true;
         grid.ClearSelection();
+    }
+
+    private async Task LogActivityAsync(string action, string details)
+    {
+        try
+        {
+            await auditLogRepository.AddAsync(action, details);
+        }
+        catch
+        {
+            // User management should not fail because of audit logging.
+        }
     }
 }

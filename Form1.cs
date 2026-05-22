@@ -3,6 +3,7 @@ namespace electronics
     public partial class Form1 : Form
     {
         private readonly AccountRepository accountRepository = new();
+        private readonly AuditLogRepository auditLogRepository = new();
 
         public Form1()
         {
@@ -93,6 +94,7 @@ namespace electronics
                 }
 
                 AppSession.CurrentAccount = account;
+                await LogActivityAsync("Login", "User logged in.");
                 textBox2.Text = string.Empty;
                 Hide();
 
@@ -132,6 +134,18 @@ namespace electronics
                 textBox1.Focus();
             };
             recovery.Show();
+        }
+
+        private async Task LogActivityAsync(string action, string details)
+        {
+            try
+            {
+                await auditLogRepository.AddAsync(action, details);
+            }
+            catch
+            {
+                // Login should continue even if the audit table is temporarily unavailable.
+            }
         }
     }
 }

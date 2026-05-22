@@ -11,7 +11,9 @@ namespace electronics
     public partial class Form4 : Form
     {
         private readonly Button btnUserManagement = new();
+        private readonly Button btnActivityLog = new();
         private readonly Button btnLogout = new();
+        private readonly AuditLogRepository auditLogRepository = new();
 
         public Form4()
         {
@@ -32,6 +34,16 @@ namespace electronics
             btnUserManagement.UseVisualStyleBackColor = true;
             btnUserManagement.Click += btnUserManagement_Click;
             Controls.Add(btnUserManagement);
+
+            btnActivityLog.Font = new Font("Segoe UI", 12F);
+            btnActivityLog.Location = new Point(696, 123);
+            btnActivityLog.Name = "btnActivityLog";
+            btnActivityLog.Size = new Size(271, 34);
+            btnActivityLog.TabIndex = 11;
+            btnActivityLog.Text = "ACTIVITY LOG";
+            btnActivityLog.UseVisualStyleBackColor = true;
+            btnActivityLog.Click += btnActivityLog_Click;
+            Controls.Add(btnActivityLog);
 
             btnLogout.Font = new Font("Segoe UI", 12F);
             btnLogout.Location = new Point(37, ClientSize.Height - 58);
@@ -76,10 +88,29 @@ namespace electronics
             accountManagementForm.ShowDialog(this);
         }
 
-        private void btnLogout_Click(object? sender, EventArgs e)
+        private void btnActivityLog_Click(object? sender, EventArgs e)
         {
+            using ActivityLogForm activityLogForm = new();
+            activityLogForm.ShowDialog(this);
+        }
+
+        private async void btnLogout_Click(object? sender, EventArgs e)
+        {
+            await LogActivityAsync("Logout", "User logged out.");
             AppSession.CurrentAccount = null;
             Close();
+        }
+
+        private async Task LogActivityAsync(string action, string details)
+        {
+            try
+            {
+                await auditLogRepository.AddAsync(action, details);
+            }
+            catch
+            {
+                // Logout should not be blocked by audit logging.
+            }
         }
     }
 }
